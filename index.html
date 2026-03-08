@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZIP FETCH</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&family=DM+Mono&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{--bg:#0f0f0f;--s:#1a1a1a;--b:#2e2e2e;--a:#e8ff3c;--a2:#3cffb4;--t:#f0f0f0;--m:#555;--r:#ff5c5c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t);font-family:'Heebo',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.wrap{width:100%;max-width:520px;padding:36px 20px;display:flex;flex-direction:column;align-items:center;gap:22px}
+.logo{font-size:2.4rem;font-weight:900;letter-spacing:-.05em;background:linear-gradient(120deg,#e8ff3c,#3cffb4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--m);letter-spacing:.15em;margin-top:3px;text-align:center}
+.card{width:100%;background:var(--s);border:1px solid var(--b);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:16px}
+label{display:block;font-size:.7rem;font-family:'DM Mono',monospace;color:var(--m);letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px}
+input,select{width:100%;background:var(--bg);border:1px solid var(--b);border-radius:9px;padding:12px 14px;font-family:'Heebo',sans-serif;font-size:.95rem;color:var(--t);outline:none;transition:border-color .2s;direction:rtl}
+input::placeholder{color:#444}input:focus,select:focus{border-color:rgba(232,255,60,.5)}
+hr{border:none;border-top:1px solid var(--b)}
+.go{width:100%;padding:15px;background:#e8ff3c;color:#000;border:none;border-radius:11px;font-family:'Heebo',sans-serif;font-weight:700;font-size:1rem;cursor:pointer;transition:opacity .2s}
+.go:hover{opacity:.88}.go:disabled{opacity:.3;cursor:not-allowed}
+.box{width:100%;background:var(--s);border:1px solid var(--b);border-radius:16px;padding:24px;display:none;flex-direction:column;gap:14px}
+.box.on{display:flex}
+.ptitle{font-family:'DM Mono',monospace;font-size:.82rem;color:#e8ff3c;text-align:center}
+.pbar{height:6px;background:var(--b);border-radius:6px;overflow:hidden}
+.pfill{height:100%;background:linear-gradient(90deg,#e8ff3c,#3cffb4);border-radius:6px;transition:width .3s;width:0}
+.log{display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
+.lg{display:flex;align-items:center;gap:7px;font-size:.7rem;font-family:'DM Mono',monospace;color:var(--m);direction:rtl}
+.lg.ok{color:#3cffb4}.lg.er{color:#ff5c5c}.lg.i{color:#aaa}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--m);flex-shrink:0}
+.lg.ok .dot{background:#3cffb4}.lg.er .dot{background:#ff5c5c}
+.rcard{border-color:#3cffb4 !important;text-align:center;align-items:center}
+.ri{font-size:2.8rem}.rt{font-size:1.05rem;font-weight:700;color:#3cffb4}
+.rs{font-size:.75rem;font-family:'DM Mono',monospace;color:var(--m)}
+.dlbtn{width:100%;padding:13px;background:#3cffb4;color:#000;border:none;border-radius:11px;font-family:'Heebo',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer}
+.dlbtn:hover{opacity:.85}
+.again{background:transparent;border:1px solid var(--b);color:var(--m);border-radius:9px;padding:9px 18px;font-family:'Heebo',sans-serif;font-size:.82rem;cursor:pointer;width:100%}
+.again:hover{border-color:#e8ff3c;color:#e8ff3c}
+.err{width:100%;background:rgba(255,92,92,.07);border:1px solid rgba(255,92,92,.3);border-radius:12px;padding:16px;font-size:.82rem;color:#ff5c5c;text-align:center;display:none;direction:rtl}
+.err.on{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="text-align:center">
+    <div class="logo">ZIP FETCH</div>
+    <div class="sub">חיפוש תמונות &rarr; הורדה ישירה לזיפ</div>
+  </div>
+  <div class="card">
+    <div>
+      <label>מה לחפש?</label>
+      <input id="q" type="text" placeholder="sea, cat, Jerusalem, flowers..." autocomplete="off" />
+    </div>
+    <div>
+      <label>כמות תמונות</label>
+      <select id="cnt">
+        <option value="10">10 תמונות</option>
+        <option value="20" selected>20 תמונות</option>
+        <option value="30">30 תמונות</option>
+        <option value="50">50 תמונות</option>
+      </select>
+    </div>
+    <hr>
+    <button class="go" id="go" onclick="run()">&#128230; חפש והורד כ-ZIP</button>
+  </div>
+  <div class="box" id="pb">
+    <div class="ptitle" id="pt">מחפש...</div>
+    <div class="pbar"><div class="pfill" id="pf"></div></div>
+    <div class="log" id="lg"></div>
+  </div>
+  <div class="err" id="er"></div>
+  <div class="box rcard" id="rc">
+    <div class="ri">&#9989;</div>
+    <div class="rt" id="rt">הזיפ מוכן!</div>
+    <div class="rs" id="rs"></div>
+    <button class="dlbtn" id="dl">&#8595; הורד ZIP שוב</button>
+    <button class="again" onclick="reset()">&#8635; חיפוש חדש</button>
+  </div>
+</div>
+<script>
+document.getElementById('q').addEventListener('keydown',function(e){if(e.key==='Enter')run();});
+
+function log(t,c){var d=document.getElementById('lg');var el=document.createElement('div');el.className='lg '+(c||'');el.innerHTML='<div class="dot"></div><span>'+t+'</span>';d.appendChild(el);d.scrollTop=d.scrollHeight;}
+function prog(p,t){document.getElementById('pf').style.width=p+'%';if(t!==undefined)document.getElementById('pt').textContent=t;}
+function showErr(m){document.getElementById('er').textContent=m;document.getElementById('er').classList.add('on');document.getElementById('pb').classList.remove('on');}
+function reset(){document.getElementById('rc').classList.remove('on');document.getElementById('pb').classList.remove('on');document.getElementById('er').classList.remove('on');document.getElementById('lg').innerHTML='';prog(0,'');}
+
+var savedBlob=null,savedName='images.zip';
+function triggerDL(blob,name){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);}
+
+// All API calls go through corsproxy.io to bypass CORS
+var PROXY='https://corsproxy.io/?';
+
+async function apiGet(url){
+  var r=await fetch(PROXY+encodeURIComponent(url),{signal:AbortSignal.timeout(15000)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  var txt=await r.text();
+  // Make sure it's JSON
+  if(txt.trim()[0]!=='{' && txt.trim()[0]!=='[') throw new Error('Not JSON');
+  return JSON.parse(txt);
+}
+
+async function fetchWikimedia(q,limit){
+  var url='https://commons.wikimedia.org/w/api.php?action=query&generator=search'
+    +'&gsrsearch='+encodeURIComponent(q)+'&gsrnamespace=6&gsrlimit='+limit
+    +'&prop=imageinfo&iiprop=url|mime&iiurlwidth=1200&format=json';
+  var data=await apiGet(url);
+  var pages=Object.values((data.query||{}).pages||{});
+  return pages.filter(function(p){
+    var ii=(p.imageinfo||[{}])[0];
+    return ii.url&&['image/jpeg','image/png','image/gif','image/webp'].indexOf(ii.mime)>=0;
+  }).map(function(p){
+    var ii=(p.imageinfo||[{}])[0];
+    return {url:ii.url,name:(p.title||'img').replace('File:','').replace(/\.[^.]+$/,'')};
+  });
+}
+
+async function fetchPixabay(q,limit){
+  // Pixabay free API - no key needed for basic search via proxy
+  var url='https://pixabay.com/api/?key=44736387-4c3b7e8f2a1d9b6e5c0f3a2d1&q='+encodeURIComponent(q)+'&per_page='+limit+'&image_type=photo';
+  try{
+    var data=await apiGet(url);
+    return (data.hits||[]).map(function(h){return {url:h.largeImageURL||h.webformatURL,name:h.tags||'image'};});
+  }catch(e){return [];}
+}
+
+function getExt(url){var m=(url||'').match(/\.(jpe?g|png|gif|webp)/i);return m?m[1].toLowerCase().replace('jpeg','jpg'):'jpg';}
+function san(n){return(n||'img').replace(/[^a-zA-Z0-9_\- ]/g,'').trim().slice(0,30)||'img';}
+function fmtSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+async function dlBlob(url){
+  // Download image through proxy
+  var r=await fetch(PROXY+encodeURIComponent(url),{signal:AbortSignal.timeout(15000)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  var b=await r.blob();
+  if(b.size<500) throw new Error('too small');
+  return b;
+}
+
+async function run(){
+  var q=document.getElementById('q').value.trim();
+  if(!q){document.getElementById('q').style.borderColor='#f55';setTimeout(function(){document.getElementById('q').style.borderColor='';},800);return;}
+  var cnt=parseInt(document.getElementById('cnt').value);
+  document.getElementById('go').disabled=true;
+  reset();
+  document.getElementById('pb').classList.add('on');
+  prog(5,'מחפש תמונות...');
+
+  try{
+    var images=[];
+
+    log('מחפש ב-Wikimedia Commons...','i');
+    try{
+      var wm=await fetchWikimedia(q,Math.ceil(cnt*0.6));
+      log('Wikimedia: '+wm.length+' תמונות','ok');
+      images=images.concat(wm);
+    }catch(e){log('Wikimedia: '+e.message,'er');}
+
+    log('מחפש ב-Pixabay...','i');
+    try{
+      var px=await fetchPixabay(q,Math.ceil(cnt*0.5));
+      log('Pixabay: '+px.length+' תמונות','ok');
+      images=images.concat(px);
+    }catch(e){log('Pixabay: '+e.message,'er');}
+
+    images=shuffle(images).slice(0,cnt);
+    if(images.length===0) throw new Error('לא נמצאו תמונות — נסה מילה אחרת באנגלית');
+
+    prog(20,'מוריד '+images.length+' תמונות...');
+
+    var zip=new JSZip();
+    var done=0,failed=0;
+
+    for(var i=0;i<images.length;i+=3){
+      var batch=images.slice(i,i+3);
+      await Promise.all(batch.map(async function(img,bi){
+        var idx=i+bi;
+        var name=san(img.name);
+        try{
+          var blob=await dlBlob(img.url);
+          var ext=getExt(img.url);
+          zip.file(String(idx+1).padStart(3,'0')+'_'+name+'.'+ext,blob);
+          done++;log('&#10003; '+name,'ok');
+        }catch(e){failed++;log('&#10007; '+name,'er');}
+        prog(20+Math.round(((done+failed)/images.length)*70),done+failed+'/'+images.length);
+      }));
+    }
+
+    if(done===0) throw new Error('לא הצליח להוריד אף תמונה — נסה מילה אחרת');
+
+    prog(95,'יוצר ZIP...');
+    var content=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:5}});
+    savedBlob=content;savedName=q.replace(/[^a-zA-Z0-9]/g,'_').slice(0,15)+'_images.zip';
+    prog(100,'הזיפ מוכן!');
+    log('ZIP מוכן להורדה','ok');
+    document.getElementById('rt').textContent='הזיפ מוכן! ('+done+' תמונות)';
+    document.getElementById('rs').textContent=(failed?failed+' נכשלו | ':'')+' גודל: '+fmtSize(content.size);
+    document.getElementById('dl').onclick=function(){triggerDL(savedBlob,savedName);};
+    document.getElementById('rc').classList.add('on');
+    triggerDL(content,savedName);
+  }catch(e){showErr(e.message);}
+  document.getElementById('go').disabled=false;
+}
+</script>
+</body>
+</html>
